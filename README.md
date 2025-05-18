@@ -48,7 +48,7 @@ bash pip install --upgrade pip pip install -r requirements.txt
 
 4. **Set Up Environment Variables:**
 
-Create a `.env` file in the project's root directory with your API keys:
+Create a `.env` file in the news_agent directory with your API keys:
 
     -   `NEWS_API_KEY`: From newsapi.org.
     -   `GOOGLE_API_KEY`: For Google's Generative AI services (e.g., Gemini) from Google AI Studio.
@@ -59,3 +59,27 @@ To interact with the agent run:
 ```shell
 adk web
 ```
+## Deploy
+Set environment variables
+```
+# Set your Google Cloud Project ID
+export GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
+
+# Set your desired Google Cloud Location
+export GOOGLE_CLOUD_LOCATION="us-central1" 
+
+# Set the path to your agent code directory
+export AGENT_PATH="./news_agent" 
+
+# Set a name for your Cloud Run service (optional)
+export SERVICE_NAME="news-agent-service"
+
+# Set an application name (optional)
+export APP_NAME="news-agent-app"
+```
+Deploy container
+```shell
+adk deploy cloud_run
+```
+
+**Note**: Check that `.env` and `requirements.txt` files are store in the agent folder

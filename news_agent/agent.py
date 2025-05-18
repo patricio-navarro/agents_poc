@@ -8,7 +8,7 @@ from google.adk.agents import Agent
 from newsapi import NewsApiClient
 from newspaper import Article, ArticleException
 
-from news_agent.prompt import PROMPT
+from .prompt import PROMPT
 
 logging.basicConfig(level=logging.INFO)
 
