@@ -1,4 +1,6 @@
 google-adk
 newsapi-python
-newspaper3k
-python-dotenv
+newspaper3k~=0.2.8
+python-dotenv~=1.1.0
+lxml[html_clean]
+protobuf~=5.29.4
