@@ -1,0 +1,4 @@
+google-adk
+newsapi-python
+newspaper3k
+python-dotenv
