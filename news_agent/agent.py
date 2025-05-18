@@ -1,5 +1,6 @@
 import logging
 import os
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict
 
@@ -18,7 +19,15 @@ load_dotenv()
 news_api_key = os.getenv("NEWS_API_KEY")
 
 
-def get_news(query: str, past_days: int = 7, domains: Optional[str] = None):
+@dataclass
+class News:
+    title: str
+    url: str
+    description: str
+    source_name: str
+
+
+def get_news(query: str, past_days: int = 7, domains: Optional[str] = None) -> List[News]:
     """
     Get news on the given parameters like query, past_days and domains.
     Args:
@@ -39,12 +48,12 @@ def get_news(query: str, past_days: int = 7, domains: Optional[str] = None):
                                                   )
     articles_found = news_details.get('articles', [])
     simplified_articles = [
-                              {
-                                  "title": article.get("title"),
-                                  "url": article.get("url"),
-                                  "description": article.get("description"),
-                                  "source_name": article.get("source", {}).get("name"),
-                              }
+                              News(
+                                  title=article.get("title"),
+                                  url=article.get("url"),
+                                  description=article.get("description"),
+                                  source_name=article.get("source", {}).get("name"),
+                              )
                               for article in articles_found
                               if article.get("title") and article.get("url")
                           ][:50]
