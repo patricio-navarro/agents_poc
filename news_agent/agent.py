@@ -22,19 +22,22 @@ news_api_key = os.getenv("NEWS_API_KEY")
 class News(BaseModel):
     title: str = Field(description="The title of the news article.")
     url: str = Field(description="The URL of the news article.")
-    description: str = Field(description="A brief description of the news article.")
+    description: Optional[str] = Field(description="A brief description of the news article.")
     source_name: str = Field(description="The name of the source of the news article.")
 
+class NewsDetails(BaseModel):
+    url: str = Field(description="The URL of the news article.")
+    text: Optional[str] = Field(description="The first 5000 char of the news article.")
 
 
-
-def get_news(query: str, past_days: int = 7, domains: Optional[str] = None) -> List[News]:
+def get_news(query: str, past_days: int = 7, domains: Optional[str] = None, max_results:int = 30) -> List[News]:
     """
     Get news on the given parameters like query, past_days and domains.
     Args:
         query: search news about this topic
         past_days: For how many days in the past should we search?
         domains: search news in these resources
+        max_results: Maximum number of news to look for
     Returns:
         news_details: news articles formated as a dictionary with title, url, description, source_name if nothing found returns empty list
     """
@@ -45,7 +48,7 @@ def get_news(query: str, past_days: int = 7, domains: Optional[str] = None) -> L
                                                   from_param=from_date,
                                                   domains=domains,
                                                   sort_by='relevancy',
-                                                  page_size=100
+                                                  page_size=max_results
                                                   )
     articles_found = news_details.get('articles', [])
     simplified_articles = [
@@ -57,11 +60,11 @@ def get_news(query: str, past_days: int = 7, domains: Optional[str] = None) -> L
                               )
                               for article in articles_found
                               if article.get("title") and article.get("url")
-                          ][:100]
+                          ][:max_results]
     return simplified_articles
 
 
-def get_full_articles(urls: List[str]) -> Dict[str, str]:
+def get_full_articles(urls: List[str]) -> List[NewsDetails]:
     """
     Fetches and extracts the main text content of a list of news articles from a given URLs, for later analysis.
 
@@ -69,9 +72,9 @@ def get_full_articles(urls: List[str]) -> Dict[str, str]:
         urls (List[str]): A list of URLs representing the news articles to fetch and parse.
 
     Returns:
-        Dict[str, str]: The extracted main text content of the article. Returns an empty string if fetching, parsing, or extraction fails.
+        List[NewsDetails]: The extracted main text content of the article. Returns an empty string if fetching, parsing, or extraction fails.
     """
-    return_dict = {}
+    news_details_list = []
     for url in urls:
         try:
             logging.info(f"Attempting to fetch article from URL: {url}")
@@ -88,18 +91,19 @@ def get_full_articles(urls: List[str]) -> Dict[str, str]:
             content = article.text
             if not content:
                 logging.warning(f"Could not extract main text content from URL: {url}")
-                return_dict[url] = ""
+                news_details_list.append(NewsDetails(url=url, text=""))
 
             logging.info(f"Successfully extracted article content from URL: {url} (Length: {len(content)})")
-            return_dict[url] = content[:10000] + ("..." if len(content) > 10000 else "")
+            short_content = content[:5000] + ("..." if len(content) > 5000 else "")
+            news_details_list.append(NewsDetails(url=url, text=short_content))
 
         except ArticleException as e:
             logging.error(f"Newspaper ArticleException for URL {url}: {e}")
-            return_dict[url] = ""
+            news_details_list.append(NewsDetails(url=url, text=""))
         except Exception as e:
             logging.error(f"Unexpected error fetching article from URL {url}: {e}")
-            return_dict[url] = ""
-    return return_dict
+            news_details_list.append(NewsDetails(url=url, text=""))
+    return news_details_list
 
 
 MODEL = "gemini-2.5-flash-preview-05-20"
@@ -108,6 +112,6 @@ MODEL = "gemini-2.5-flash-preview-05-20"
 root_agent = Agent(
     model=MODEL,
     name="root_agent",
-    description="Agent to answer questions about news.",
+    description="Agent to provide news lists or summaries.",
     instruction=PROMPT,
     tools=[get_news, get_full_articles])

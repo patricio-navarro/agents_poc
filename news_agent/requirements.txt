@@ -1,4 +1,5 @@
 google-adk
+Deprecated
 newsapi-python
 newspaper3k~=0.2.8
 python-dotenv~=1.1.0
