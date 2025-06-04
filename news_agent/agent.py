@@ -1,6 +1,6 @@
 import logging
 import os
-from dataclasses import dataclass
+from pydantic import BaseModel, Field
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict
 
@@ -9,22 +9,23 @@ from google.adk.agents import Agent
 from newsapi import NewsApiClient
 from newspaper import Article, ArticleException
 
+
 from .prompt import PROMPT
 
 logging.basicConfig(level=logging.INFO)
-
-os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "False"
 
 load_dotenv()
 news_api_key = os.getenv("NEWS_API_KEY")
 
 
-@dataclass
-class News:
-    title: str
-    url: str
-    description: str
-    source_name: str
+
+class News(BaseModel):
+    title: str = Field(description="The title of the news article.")
+    url: str = Field(description="The URL of the news article.")
+    description: str = Field(description="A brief description of the news article.")
+    source_name: str = Field(description="The name of the source of the news article.")
+
+
 
 
 def get_news(query: str, past_days: int = 7, domains: Optional[str] = None) -> List[News]:
@@ -44,7 +45,7 @@ def get_news(query: str, past_days: int = 7, domains: Optional[str] = None) -> L
                                                   from_param=from_date,
                                                   domains=domains,
                                                   sort_by='relevancy',
-                                                  page_size=20
+                                                  page_size=100
                                                   )
     articles_found = news_details.get('articles', [])
     simplified_articles = [
@@ -56,7 +57,7 @@ def get_news(query: str, past_days: int = 7, domains: Optional[str] = None) -> L
                               )
                               for article in articles_found
                               if article.get("title") and article.get("url")
-                          ][:50]
+                          ][:100]
     return simplified_articles
 
 
@@ -78,21 +79,18 @@ def get_full_articles(urls: List[str]) -> Dict[str, str]:
 
             # Download the article HTML
             article.download()
-            if article.download_state != 2:  # 2 means success
+            if article.download_state != 2:
                 raise ArticleException(
                     f"Failed to download article. State: {article.download_state}, Exception: {article.download_exception_msg}")
 
-            # Parse the article to extract content
             article.parse()
 
-            # Extract the main text
             content = article.text
             if not content:
                 logging.warning(f"Could not extract main text content from URL: {url}")
                 return_dict[url] = ""
 
             logging.info(f"Successfully extracted article content from URL: {url} (Length: {len(content)})")
-            # Return only the first 5000 characters to avoid overly long responses for the LLM
             return_dict[url] = content[:10000] + ("..." if len(content) > 10000 else "")
 
         except ArticleException as e:
@@ -104,9 +102,11 @@ def get_full_articles(urls: List[str]) -> Dict[str, str]:
     return return_dict
 
 
+MODEL = "gemini-2.5-flash-preview-05-20"
+
 # Corrected Agent definition
 root_agent = Agent(
-    model="gemini-2.0-flash",
+    model=MODEL,
     name="root_agent",
     description="Agent to answer questions about news.",
     instruction=PROMPT,
